@@ -63,10 +63,14 @@ import org.newdawn.slick.state.transition.FadeOutTransition;
 public class Game extends BasicGameState {
 	/** Game restart states. */
 	public enum Restart {
-		FALSE,   // no restart
-		NEW,     // first time loading song
-		MANUAL,  // retry
-		LOSE;    // health is zero: no-continue/force restart
+		/** No restart. */
+		FALSE,
+		/** First time loading the song. */
+		NEW,
+		/** Manual retry. */
+		MANUAL,
+		/** Health is zero: no-continue/force restart. */
+		LOSE;
 	}
 
 	/** Minimum time before start of song, in milliseconds, to process skip-related actions. */
@@ -173,10 +177,11 @@ public class Game extends BasicGameState {
 		// background
 		g.setBackground(Color.black);
 		float dimLevel = Options.getBackgroundDim();
-		if (Options.isDefaultPlayfieldForced() || !osu.drawBG(width, height, dimLevel)) {
+		if (Options.isDefaultPlayfieldForced() || !osu.drawBG(width, height, dimLevel, false)) {
 			Image playfield = GameImage.PLAYFIELD.getImage();
 			playfield.setAlpha(dimLevel);
 			playfield.draw();
+			playfield.setAlpha(1f);
 		}
 
 		int trackPosition = MusicController.getPosition();
@@ -285,7 +290,7 @@ public class Game extends BasicGameState {
 		}
 
 		if (isLeadIn())
-			trackPosition = leadInTime * -1;  // render approach circles during song lead-in
+			trackPosition = (leadInTime - Options.getMusicOffset()) * -1;  // render approach circles during song lead-in
 
 		// countdown
 		if (osu.countdown > 0) {  // TODO: implement half/double rate settings
@@ -376,7 +381,7 @@ public class Game extends BasicGameState {
 		if (isLeadIn()) {  // stop updating during song lead-in
 			leadInTime -= delta;
 			if (!isLeadIn())
-				MusicController.playAt(0, false);
+				MusicController.resume();
 			return;
 		}
 
@@ -694,6 +699,9 @@ public class Game extends BasicGameState {
 
 			// reset game data
 			resetGameData();
+
+			// needs to play before setting position to resume without lag later
+			MusicController.play();
 			MusicController.setPosition(0);
 			MusicController.pause();
 
@@ -870,6 +878,7 @@ public class Game extends BasicGameState {
 		// HPDrainRate (health change), overallDifficulty (scoring)
 		data.setDrainRate(HPDrainRate);
 		data.setDifficulty(overallDifficulty);
+		data.setHitResultOffset(hitResultOffset);
 	}
 
 	/**

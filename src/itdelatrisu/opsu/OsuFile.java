@@ -34,6 +34,9 @@ public class OsuFile implements Comparable<OsuFile> {
 	/** Map of all loaded background images. */
 	private static HashMap<OsuFile, Image> bgImageMap = new HashMap<OsuFile, Image>();
 
+	/** Maximum number of cached images before all get erased. */
+	private static final int MAX_CACHE_SIZE = 10;
+
 	/** The OSU File object associated with this OsuFile. */
 	private File file;
 
@@ -250,19 +253,40 @@ public class OsuFile implements Comparable<OsuFile> {
 	 * @param width the container width
 	 * @param height the container height
 	 * @param alpha the alpha value
+	 * @param stretch if true, stretch to screen dimensions; otherwise, maintain aspect ratio
 	 * @return true if successful, false if any errors were produced
 	 */
-	public boolean drawBG(int width, int height, float alpha) {
+	public boolean drawBG(int width, int height, float alpha, boolean stretch) {
 		if (bg == null)
 			return false;
 		try {
 			Image bgImage = bgImageMap.get(this);
 			if (bgImage == null) {
-				bgImage = new Image(bg).getScaledCopy(width, height);
+				if (bgImageMap.size() > MAX_CACHE_SIZE)
+					clearImageCache();
+				bgImage = new Image(bg);
 				bgImageMap.put(this, bgImage);
 			}
+
+			int swidth = width;
+			int sheight = height;
+			if (!stretch) {
+				// fit image to screen
+				if (bgImage.getWidth() / (float) bgImage.getHeight() > width / (float) height)  // x > y
+					sheight = (int) (width * bgImage.getHeight() / (float) bgImage.getWidth());
+				else
+					swidth = (int) (height * bgImage.getWidth() / (float) bgImage.getHeight());
+			} else {
+				// fill screen while maintaining aspect ratio
+				if (bgImage.getWidth() / (float) bgImage.getHeight() > width / (float) height)  // x > y
+					swidth = (int) (height * bgImage.getWidth() / (float) bgImage.getHeight());
+				else
+					sheight = (int) (width * bgImage.getHeight() / (float) bgImage.getWidth());
+			}
+			bgImage = bgImage.getScaledCopy(swidth, sheight);
+
 			bgImage.setAlpha(alpha);
-			bgImage.draw();
+			bgImage.drawCentered(width / 2, height / 2);
 		} catch (Exception e) {
 			Log.warn(String.format("Failed to get background image '%s'.", bg), e);
 			bg = null;  // don't try to load the file again until a restart

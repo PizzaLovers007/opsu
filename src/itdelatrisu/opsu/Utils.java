@@ -25,14 +25,17 @@ import itdelatrisu.opsu.downloads.DownloadNode;
 import java.awt.Font;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 
 import javax.imageio.ImageIO;
 
@@ -55,6 +58,8 @@ import org.newdawn.slick.state.StateBasedGame;
 import org.newdawn.slick.util.Log;
 import org.newdawn.slick.util.ResourceLoader;
 
+import com.sun.jna.platform.FileUtils;
+
 /**
  * Contains miscellaneous utilities.
  */
@@ -74,7 +79,11 @@ public class Utils {
 		COLOR_YELLOW_ALPHA    = new Color(255, 255, 0, 0.4f),
 		COLOR_WHITE_FADE      = new Color(255, 255, 255, 1f),
 		COLOR_RED_HOVER       = new Color(255, 112, 112),
-		COLOR_GREEN           = new Color(137, 201, 79);
+		COLOR_GREEN           = new Color(137, 201, 79),
+		COLOR_LIGHT_ORANGE    = new Color(255,192,128),
+		COLOR_LIGHT_GREEN     = new Color(128,255,128),
+		COLOR_LIGHT_BLUE      = new Color(128,128,255),
+		COLOR_GREEN_SEARCH    = new Color(173, 255, 47);
 
 	/** The default map colors, used when a map does not provide custom colors. */
 	public static final Color[] DEFAULT_COMBO = {
@@ -181,7 +190,7 @@ public class Utils {
 			Font font    = javaFont.deriveFont(Font.PLAIN, (int) (fontBase * 4 / 3));
 			FONT_DEFAULT = new UnicodeFont(font);
 			FONT_BOLD    = new UnicodeFont(font.deriveFont(Font.BOLD));
-			FONT_XLARGE  = new UnicodeFont(font.deriveFont(fontBase * 4));
+			FONT_XLARGE  = new UnicodeFont(font.deriveFont(fontBase * 3));
 			FONT_LARGE   = new UnicodeFont(font.deriveFont(fontBase * 2));
 			FONT_MEDIUM  = new UnicodeFont(font.deriveFont(fontBase * 3 / 2));
 			FONT_SMALL   = new UnicodeFont(font.deriveFont(fontBase));
@@ -207,15 +216,8 @@ public class Utils {
 		for (GameMod mod : GameMod.values())
 			mod.init(width, height);
 
-		// initialize sorts
-		for (SongSort sort : SongSort.values())
-			sort.init(width, height);
-
 		// initialize hit objects
 		OsuHitObject.init(width, height);
-
-		// initialize score data buttons
-		ScoreData.init(width, height);
 
 		// initialize download nodes
 		DownloadNode.init(width, height);
@@ -310,6 +312,22 @@ public class Utils {
 			val = min;
 		else if (val > max)
 			val = max;
+		return val;
+	}
+
+	/**
+	 * Clamps a value between a lower and upper bound.
+	 * @param val the value to clamp
+	 * @param low the lower bound
+	 * @param high the upper bound
+	 * @return the clamped value
+	 * @author fluddokt
+	 */
+	public static float clamp(float val, int low, int high) {
+		if (val < low)
+			return low;
+		if (val > high)
+			return high;
 		return val;
 	}
 
@@ -604,6 +622,40 @@ public class Utils {
 	}
 
 	/**
+	 * Draws a scroll bar.
+	 * @param g the graphics context
+	 * @param unitIndex the unit index
+	 * @param totalUnits the total number of units
+	 * @param maxShown the maximum number of units shown at one time
+	 * @param unitBaseX the base x coordinate of the units
+	 * @param unitBaseY the base y coordinate of the units
+	 * @param unitWidth the width of a unit
+	 * @param unitHeight the height of a unit
+	 * @param unitOffsetY the y offset between units
+	 * @param bgColor the scroll bar area background color (null if none)
+	 * @param scrollbarColor the scroll bar color
+	 * @param right whether or not to place the scroll bar on the right side of the unit
+	 */
+	public static void drawScrollbar(
+			Graphics g, int unitIndex, int totalUnits, int maxShown,
+			float unitBaseX, float unitBaseY, float unitWidth, float unitHeight, float unitOffsetY,
+			Color bgColor, Color scrollbarColor, boolean right
+	) {
+		float scrollbarWidth = container.getWidth() * 0.00347f;
+		float heightRatio = (float) (2.6701f * Math.exp(-0.81 * Math.log(totalUnits)));
+		float scrollbarHeight = container.getHeight() * heightRatio;
+		float scrollAreaHeight = unitHeight + unitOffsetY * (maxShown - 1);
+		float offsetY = (scrollAreaHeight - scrollbarHeight) * ((float) unitIndex / (totalUnits - maxShown));
+		float scrollbarX = unitBaseX + unitWidth - ((right) ? scrollbarWidth : 0);
+		if (bgColor != null) {
+			g.setColor(bgColor);
+			g.fillRect(scrollbarX, unitBaseY, scrollbarWidth, scrollAreaHeight);
+		}
+		g.setColor(scrollbarColor);
+		g.fillRect(scrollbarX, unitBaseY + offsetY, scrollbarWidth, scrollbarHeight);
+	}
+
+	/**
 	 * Takes a screenshot.
 	 * @author http://wiki.lwjgl.org/index.php?title=Taking_Screen_Shots
 	 */
@@ -738,4 +790,99 @@ public class Utils {
 	    }
 	    return cleanName.toString();
 	}
+
+	/**
+	 * Deletes a file or directory.  If a system trash directory is available,
+	 * the file or directory will be moved there instead.
+	 * @param file the file or directory to delete
+	 * @return true if moved to trash, and false if deleted
+	 * @throws IOException if given file does not exist
+	 */
+	public static boolean deleteToTrash(File file) throws IOException {
+		if (file == null)
+			throw new IOException("File cannot be null.");
+		if (!file.exists())
+			throw new IOException(String.format("File '%s' does not exist.", file.getAbsolutePath()));
+
+		// move to system trash, if possible
+		FileUtils fileUtils = FileUtils.getInstance();
+		if (fileUtils.hasTrash()) {
+			try {
+				fileUtils.moveToTrash(new File[] { file });
+				return true;
+			} catch (IOException e) {
+				Log.warn(String.format("Failed to move file '%s' to trash.", file.getAbsolutePath()), e);
+			}
+		}
+
+		// delete otherwise
+		if (file.isDirectory())
+			deleteDirectory(file);
+		else
+			file.delete();
+		return false;
+	}
+
+	/**
+	 * Recursively deletes all files and folders in a directory, then
+	 * deletes the directory itself.
+	 * @param dir the directory to delete
+	 */
+	private static void deleteDirectory(File dir) {
+		if (dir == null || !dir.isDirectory())
+			return;
+
+		// recursively delete contents of directory
+		File[] files = dir.listFiles();
+		if (files != null && files.length > 0) {
+			for (File file : files) {
+				if (file.isDirectory())
+					deleteDirectory(file);
+				else
+					file.delete();
+			}
+		}
+
+		// delete the directory
+		dir.delete();
+	}
+
+	/**
+	 * Wraps the given string into a list of split lines based on the width.
+	 * @param text the text to split
+	 * @param font the font used to draw the string
+	 * @param width the maximum width of a line
+	 * @return the list of split strings
+	 * @author davedes (http://slick.ninjacave.com/forum/viewtopic.php?t=3778)
+	 */
+	public static List<String> wrap(String text, org.newdawn.slick.Font font, int width) {
+		List<String> list = new ArrayList<String>();
+		String str = text;
+		String line = "";
+		int i = 0;
+		int lastSpace = -1;
+		while (i < str.length()) {
+			char c = str.charAt(i);
+			if (Character.isWhitespace(c))
+				lastSpace = i;
+			String append = line + c;
+			if (font.getWidth(append) > width) {
+				int split = (lastSpace != -1) ? lastSpace : i;
+				int splitTrimmed = split;
+				if (lastSpace != -1 && split < str.length() - 1)
+					splitTrimmed++;
+				list.add(str.substring(0, split));
+				str = str.substring(splitTrimmed);
+				line = "";
+				i = 0;
+				lastSpace = -1;
+			} else {
+				line = append;
+				i++;
+			}
+		}
+		if (str.length() != 0)
+			list.add(str);
+		return list;
+    }
 }

@@ -98,8 +98,8 @@ public class Slider implements HitObject {
 	 * @param osu the associated OsuFile object
 	 */
 	public static void init(GameContainer container, float circleSize, OsuFile osu) {
-		int diameter = (int) (96 - (circleSize * 8));
-		diameter = diameter * container.getWidth() / 640;  // convert from Osupixels (640x480)
+		int diameter = (int) (104 - (circleSize * 8));
+		diameter = (int) (diameter * OsuHitObject.getXMultiplier());  // convert from Osupixels (640x480)
 
 		// slider ball
 		Image[] sliderBallImages;
@@ -110,7 +110,7 @@ public class Slider implements HitObject {
 			sliderBallImages = new Image[]{ GameImage.SLIDER_BALL.getImage() };
 		for (int i = 0; i < sliderBallImages.length; i++)
 			sliderBallImages[i] = sliderBallImages[i].getScaledCopy(diameter * 118 / 128, diameter * 118 / 128);
-		sliderBall = new Animation(sliderBallImages, 60);
+		sliderBall = new Animation(sliderBallImages, 30);
 
 		GameImage.SLIDER_FOLLOWCIRCLE.setImage(GameImage.SLIDER_FOLLOWCIRCLE.getImage().getScaledCopy(diameter * 259 / 128, diameter * 259 / 128));
 		GameImage.REVERSEARROW.setImage(GameImage.REVERSEARROW.getImage().getScaledCopy(diameter, diameter));
@@ -141,16 +141,19 @@ public class Slider implements HitObject {
 			this.curve = new LinearBezier(hitObject, color);
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public void draw(int trackPosition, boolean currentObject, Graphics g) {
-		float x = hitObject.getX(), y = hitObject.getY();
 		int timeDiff = hitObject.getTime() - trackPosition;
+		float scale = timeDiff / (float) game.getApproachTime();
+		float approachScale = 1 + scale * 3;
+		float x = hitObject.getX(), y = hitObject.getY();
 
-		float approachScale = (timeDiff >= 0) ? 1 + (timeDiff * 2f / game.getApproachTime()) : 1f;
-		float alpha = (approachScale > 3.3f) ? 0f : 1f - (approachScale - 1f) / 2.7f;
 		float oldAlpha = color.a;
 		float oldAlphaFade = Utils.COLOR_WHITE_FADE.a;
-		color.a = alpha;
+		float alpha = (1 - scale);
+		color.a = Utils.clamp(alpha * 0.5f, 0, 1);
+		alpha = Utils.clamp(alpha, 0, 1);
 		Utils.COLOR_WHITE_FADE.a = alpha;
 
 		// curve
@@ -167,6 +170,7 @@ public class Slider implements HitObject {
 
 		Image hitCircleOverlay = GameImage.HITCIRCLE_OVERLAY.getImage();
 		Image hitCircle = GameImage.HITCIRCLE.getImage();
+		color.a = alpha;
 
 		// end circle
 		float[] endPos = curve.pointAt(1);
@@ -174,8 +178,8 @@ public class Slider implements HitObject {
 		Utils.drawCentered(hitCircleOverlay, endPos[0], endPos[1], Utils.COLOR_WHITE_FADE);
 
 		// start circle
-		Utils.drawCentered(hitCircleOverlay, x, y, Utils.COLOR_WHITE_FADE);
 		Utils.drawCentered(hitCircle, x, y, color);
+		Utils.drawCentered(hitCircleOverlay, x, y, Utils.COLOR_WHITE_FADE);
 		if (sliderClicked)
 			;  // don't draw current combo number if already clicked
 		else
@@ -208,12 +212,22 @@ public class Slider implements HitObject {
 
 		if (timeDiff >= 0) {
 			// approach circle
+			color.a = 1 - scale;
 			Utils.drawCentered(GameImage.APPROACHCIRCLE.getImage().getScaledCopy(approachScale), x, y, color);
 		} else {
 			float[] c = curve.pointAt(getT(trackPosition, false));
+			float[] c2 = curve.pointAt(getT(trackPosition, false) + 0.01f);
 
 			// slider ball
-			Utils.drawCentered(sliderBall, c[0], c[1]);
+			// TODO: deprecated method
+			// TODO 2: update the animation based on the distance traveled?
+			sliderBall.updateNoDraw();
+			Image sliderBallFrame = sliderBall.getCurrentFrame();
+			float angle = (float) (Math.atan2(c2[1] - c[1], c2[0] - c[0]) * 180 / Math.PI);
+			if (currentRepeats % 2 == 1)
+				angle += 180;
+			sliderBallFrame.setRotation(angle);
+			sliderBallFrame.drawCentered(c[0], c[1]);
 
 			// follow circle
 			if (followCircleActive)
@@ -271,6 +285,7 @@ public class Slider implements HitObject {
 			//else not a hit
 
 			if (result > -1) {
+				data.addHitError(hitObject.getTime(), x,y,trackPosition - hitObject.getTime());
 				sliderClicked = true;
 				data.sliderTickResult(hitObject.getTime(), result,
 						hitObject.getX(), hitObject.getY(), hitObject.getHitSoundType());

@@ -39,6 +39,9 @@ public class GameData {
 	/** Delta multiplier for steady HP drain. */
 	public static final float HP_DRAIN_MULTIPLIER = 1 / 200f;
 
+	/** Time, in milliseconds, for a hit error tick to fade. */
+	private static final int HIT_ERROR_FADE_TIME = 5000;
+
 	/** Letter grades. */
 	public enum Grade {
 		NULL (null, null),
@@ -150,8 +153,44 @@ public class GameData {
 	/** Current x coordinate of the combo burst image (for sliding animation). */
 	private int comboBurstX;
 
+	/** Time offsets for obtaining each hit result (indexed by HIT_* constants). */
+	private int[] hitResultOffset;
+
 	/** List of hit result objects associated with hit objects. */
 	private LinkedList<OsuHitObjectResult> hitResultList;
+
+	/**
+	 * Class to store hit error information.
+	 * @author fluddokt
+	 */
+	private class HitErrorInfo {
+		/** The correct hit time. */
+		private int time;
+
+		/** The coordinates of the hit. */
+		@SuppressWarnings("unused")
+		private int x, y;
+
+		/** The difference between the correct and actual hit times. */
+		private int timeDiff;
+
+		/**
+		 * Constructor.
+		 * @param time the correct hit time
+		 * @param x the x coordinate of the hit
+		 * @param y the y coordinate of the hit
+		 * @param timeDiff the difference between the correct and actual hit times
+		 */
+		public HitErrorInfo(int time, int x, int y, int timeDiff) {
+			this.time = time;
+			this.x = x;
+			this.y = y;
+			this.timeDiff = timeDiff;
+		}
+	}
+
+	/** List containing recent hit error information. */
+	private LinkedList<HitErrorInfo> hitErrorList;
 
 	/**
 	 * Hit result helper class.
@@ -277,6 +316,7 @@ public class GameData {
 		healthDisplay = 100f;
 		hitResultCount = new int[HIT_MAX];
 		hitResultList = new LinkedList<OsuHitObjectResult>();
+		hitErrorList = new LinkedList<HitErrorInfo>();
 		fullObjectCount = 0;
 		combo = 0;
 		comboMax = 0;
@@ -365,6 +405,11 @@ public class GameData {
 	public float getDifficulty() { return difficulty; }
 
 	/**
+	 * Sets the array of hit result offsets.
+	 */
+	public void setHitResultOffset(int[] hitResultOffset) { this.hitResultOffset = hitResultOffset; }
+
+	/**
 	 * Draws a number with defaultSymbols.
 	 * @param n the number to draw
 	 * @param x the center x coordinate
@@ -416,7 +461,7 @@ public class GameData {
 	/**
 	 * Draws game elements:
 	 *   scorebar, score, score percentage, map progress circle,
-	 *   mod icons, combo count, combo burst, and grade.
+	 *   mod icons, combo count, combo burst, hit error bar, and grade.
 	 * @param g the graphics context
 	 * @param breakPeriod if true, will not draw scorebar and combo elements, and will draw grade
 	 * @param firstObject true if the first hit object's start time has not yet passed
@@ -517,6 +562,46 @@ public class GameData {
 			// combo count
 			if (combo > 0)  // 0 isn't a combo
 				drawSymbolString(String.format("%dx", combo), 10, height - 10 - symbolHeight, 1.0f, false);
+
+			// hit error bar
+			if (Options.isHitErrorBarEnabled()) {
+				// draw bar
+				int hitErrorY = 30;
+				g.setColor(Color.black);
+				g.fillRect(width / 2f - 3 - hitResultOffset[HIT_50],
+						height - marginX - hitErrorY - 10,
+						hitResultOffset[HIT_50] * 2, 20);
+				g.setColor(Utils.COLOR_LIGHT_ORANGE);
+				g.fillRect(width / 2f - 3 - hitResultOffset[HIT_50],
+						height - marginX - hitErrorY - 3,
+						hitResultOffset[HIT_50] * 2, 6);
+				g.setColor(Utils.COLOR_LIGHT_GREEN);
+				g.fillRect(width / 2f - 3 - hitResultOffset[HIT_100],
+						height - marginX - hitErrorY - 3,
+						hitResultOffset[HIT_100] * 2, 6);
+				g.setColor(Utils.COLOR_LIGHT_BLUE);
+				g.fillRect(width / 2f - 3 - hitResultOffset[HIT_300],
+						height - marginX - hitErrorY - 3,
+						hitResultOffset[HIT_300] * 2, 6);
+				g.setColor(Color.white);
+				g.drawRect(width / 2f - 3, height - marginX - hitErrorY - 10, 6, 20);
+
+				// draw ticks
+				Color white = new Color(Color.white);
+				Iterator<HitErrorInfo> iter = hitErrorList.iterator();
+				while (iter.hasNext()) {
+					HitErrorInfo info = iter.next();
+					int time = info.time;
+					if (Math.abs(info.timeDiff) < hitResultOffset[GameData.HIT_50] &&
+					    time + HIT_ERROR_FADE_TIME > trackPosition) {
+						float alpha = 1 - ((float) (trackPosition - time) / HIT_ERROR_FADE_TIME);
+						white.a = alpha;
+						g.setColor(white);
+						g.fillRect(width / 2 + info.timeDiff - 1, height - marginX - hitErrorY - 10, 2, 20);
+					} else
+						iter.remove();
+				}
+			}
 		} else {
 			// grade
 			Grade grade = getGrade();
@@ -649,6 +734,9 @@ public class GameData {
 					float scale = 1f + ((trackPosition - hitResult.time) / (float) fadeDelay);
 					Image scaledLighting  = GameImage.LIGHTING.getImage().getScaledCopy(scale);
 					Image scaledLighting1 = GameImage.LIGHTING1.getImage().getScaledCopy(scale);
+					scaledLighting.setAlpha(hitResult.alpha);
+					scaledLighting1.setAlpha(hitResult.alpha);
+
 					scaledLighting.draw(hitResult.x - (scaledLighting.getWidth() / 2f),
 							hitResult.y - (scaledLighting.getHeight() / 2f), hitResult.color);
 					scaledLighting1.draw(hitResult.x - (scaledLighting1.getWidth() / 2f),
@@ -1008,4 +1096,15 @@ public class GameData {
 	 * @return true if gameplay, false if score viewing
 	 */
 	public boolean isGameplay() { return gameplay; }
+
+	/**
+	 * Adds the hit into the list of hit error information.
+	 * @param time the correct hit time
+	 * @param x the x coordinate of the hit
+	 * @param y the y coordinate of the hit
+	 * @param timeDiff the difference between the correct and actual hit times
+	 */
+	public void addHitError(int time, int x, int y, int timeDiff) {
+		hitErrorList.add(new HitErrorInfo(time, x, y, timeDiff));
+	}
 }

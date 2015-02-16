@@ -42,24 +42,27 @@ import org.newdawn.slick.util.Log;
  * Handles all user options.
  */
 public class Options {
-	/** Temporary folder for file conversions, auto-deleted upon successful exit. */
-	public static final File TMP_DIR = new File(".opsu_tmp/");
+	/** The config directory. */
+	private static final File CONFIG_DIR = getXDGBaseDir("XDG_CONFIG_HOME", ".config");
+
+	/** The data directory. */
+	private static final File DATA_DIR = getXDGBaseDir("XDG_DATA_HOME", ".local/share");
 
 	/** File for logging errors. */
-	public static final File LOG_FILE = new File(".opsu.log");
+	public static final File LOG_FILE = new File(CONFIG_DIR, ".opsu.log");
 
 	/** File for storing user options. */
-	private static final File OPTIONS_FILE = new File(".opsu.cfg");
+	private static final File OPTIONS_FILE = new File(CONFIG_DIR, ".opsu.cfg");
 
 	/** Beatmap directories (where to search for files).  */
 	private static final String[] BEATMAP_DIRS = {
 		"C:/Program Files (x86)/osu!/Songs/",
 		"C:/Program Files/osu!/Songs/",
-		"Songs/"
+		new File(DATA_DIR, "Songs/").getPath()
 	};
 
 	/** Score database name. */
-	public static final String SCORE_DB = ".opsu_scores.db";
+	public static final File SCORE_DB = new File(DATA_DIR, ".opsu_scores.db");
 
 	/** Font file name. */
 	public static final String FONT_NAME = "kochi-gothic.ttf";
@@ -90,6 +93,34 @@ public class Options {
 
 	/** The current skin directory (for user skins). */
 	private static File skinDir;
+
+	/**
+	 * Returns the directory based on the XDG base directory specification for
+	 * Unix-like operating systems, only if the system property "XDG" has been defined.
+	 * @param env the environment variable to check (XDG_*_*)
+	 * @param fallback the fallback directory relative to ~home
+	 * @return the XDG base directory, or the working directory if unavailable
+	 */
+	private static File getXDGBaseDir(String env, String fallback) {
+		if (System.getProperty("XDG") == null)
+			return new File("./");
+
+		String OS = System.getProperty("os.name").toLowerCase();
+		if (OS.indexOf("nix") >= 0 || OS.indexOf("nux") >= 0 || OS.indexOf("aix") > 0) {
+			String rootPath = System.getenv(env);
+			if (rootPath == null) {
+				String home = System.getProperty("user.home");
+				if (home == null)
+					return new File("./");
+				rootPath = String.format("%s/%s", home, fallback);
+			}
+			File dir = new File(rootPath, "opsu");
+			if (!dir.isDirectory())
+				dir.mkdir();
+			return dir;
+		} else
+			return new File("./");
+	}
 
 	/**
 	 * The theme song string:
@@ -332,6 +363,13 @@ public class Options {
 
 			@Override
 			public void click(GameContainer container) { themeSongEnabled = !themeSongEnabled; }
+		},
+		SHOW_HIT_ERROR_BAR ("Show Hit Error Bar", "Displays hit accuracy information at the bottom of the screen.") {
+			@Override
+			public String getValueString() { return showHitErrorBar ? "Yes" : "No"; }
+
+			@Override
+			public void click(GameContainer container) { showHitErrorBar = !showHitErrorBar; }
 		};
 
 		/** Option name. */
@@ -387,16 +425,20 @@ public class Options {
 		RES_800_600 (800, 600),
 		RES_1024_600 (1024, 600),
 		RES_1024_768 (1024, 768),
+		RES_1280_720 (1280, 720),
 		RES_1280_800 (1280, 800),
 		RES_1280_960 (1280, 960),
+		RES_1280_1024 (1280, 1024),
 		RES_1366_768 (1366, 768),
 		RES_1440_900 (1440, 900),
 		RES_1600_900 (1600, 900),
+		RES_1600_1200 (1600, 1200),
 		RES_1680_1050 (1680, 1050),
 		RES_1920_1080 (1920, 1080),
 		RES_1920_1200 (1920, 1200),
 		RES_2560_1440 (2560, 1440),
-		RES_2560_1600 (2560, 1600);
+		RES_2560_1600 (2560, 1600),
+		RES_3840_2160 (3840, 2160);
 
 		/** Screen dimensions. */
 		private int width, height;
@@ -498,6 +540,9 @@ public class Options {
 
 	/** Whether or not to play the theme song. */
 	private static boolean themeSongEnabled = true;
+
+	/** Whether or not to show the hit error bar. */
+	private static boolean showHitErrorBar = false;
 
 	/** Fixed difficulty overrides. */
 	private static float
@@ -729,7 +774,7 @@ public class Options {
 	 * Returns whether or not to play the theme song.
 	 * @return true if enabled
 	 */
-	public static boolean isThemSongEnabled() { return themeSongEnabled; }
+	public static boolean isThemeSongEnabled() { return themeSongEnabled; }
 
 	/**
 	 * Sets the track checkpoint time, if within bounds.
@@ -743,6 +788,12 @@ public class Options {
 		}
 		return false;
 	}
+
+	/**
+	 * Returns whether or not to show the hit error bar.
+	 * @return true if enabled
+	 */
+	public static boolean isHitErrorBarEnabled() { return showHitErrorBar; }
 
 	/**
 	 * Returns the left game key.
@@ -805,7 +856,7 @@ public class Options {
 		if (oszDir != null && oszDir.isDirectory())
 			return oszDir;
 
-		oszDir = new File("SongPacks/");
+		oszDir = new File(DATA_DIR, "SongPacks/");
 		oszDir.mkdir();
 		return oszDir;
 	}
@@ -819,7 +870,7 @@ public class Options {
 		if (screenshotDir != null && screenshotDir.isDirectory())
 			return screenshotDir;
 
-		screenshotDir = new File("Screenshots/");
+		screenshotDir = new File(DATA_DIR, "Screenshots/");
 		return screenshotDir;
 	}
 
@@ -832,7 +883,7 @@ public class Options {
 		if (skinDir != null && skinDir.isDirectory())
 			return skinDir;
 
-		skinDir = new File("Skins/");
+		skinDir = new File(DATA_DIR, "Skins/");
 		skinDir.mkdir();
 		return skinDir;
 	}
@@ -1006,6 +1057,9 @@ public class Options {
 				case "PerfectHit":
 					showPerfectHit = Boolean.parseBoolean(value);
 					break;
+				case "HitErrorBar":
+					showHitErrorBar = Boolean.parseBoolean(value);
+					break;
 				case "FixedCS":
 					fixedCS = Float.parseFloat(value);
 					break;
@@ -1108,6 +1162,8 @@ public class Options {
 			writer.write(String.format("ComboBurst = %b", showComboBursts));
 			writer.newLine();
 			writer.write(String.format("PerfectHit = %b", showPerfectHit));
+			writer.newLine();
+			writer.write(String.format("HitErrorBar = %b", showHitErrorBar));
 			writer.newLine();
 			writer.write(String.format(Locale.US, "FixedCS = %.1f", fixedCS));
 			writer.newLine();

@@ -413,7 +413,7 @@ public class DownloadsMenu extends BasicGameState {
 	@Override
 	public void mousePressed(int button, int x, int y) {
 		// check mouse button
-		if (button != Input.MOUSE_LEFT_BUTTON)
+		if (button == Input.MOUSE_MIDDLE_BUTTON)
 			return;
 
 		// block input during beatmap importing
@@ -438,6 +438,12 @@ public class DownloadsMenu extends BasicGameState {
 					if (index >= nodes.length)
 						break;
 					if (DownloadNode.resultContains(x, y, i)) {
+						DownloadNode node = nodes[index];
+
+						// check if map is already loaded
+						if (OsuGroupList.get().containsBeatmapSetID(node.getID()))
+							return;
+
 						SoundController.playSound(SoundEffect.MENUCLICK);
 						if (index == focusResult) {
 							if (focusTimer >= FOCUS_DELAY) {
@@ -445,7 +451,6 @@ public class DownloadsMenu extends BasicGameState {
 								focusTimer = 0;
 							} else {
 								// start download
-								DownloadNode node = nodes[index];
 								if (!DownloadList.get().contains(node.getID())) {
 									DownloadList.get().addNode(node);
 									node.createDownload(server);
@@ -515,6 +520,7 @@ public class DownloadsMenu extends BasicGameState {
 						}
 					}
 
+					DownloadList.get().clearDownloads(Download.Status.COMPLETE);
 					importThread = null;
 				}
 			};
@@ -658,6 +664,12 @@ public class DownloadsMenu extends BasicGameState {
 		startResult = 0;
 		startDownloadIndex = 0;
 		pageDir = Page.RESET;
+	}
+
+	@Override
+	public void leave(GameContainer container, StateBasedGame game)
+			throws SlickException {
+		search.setFocus(false);
 	}
 
 	/**

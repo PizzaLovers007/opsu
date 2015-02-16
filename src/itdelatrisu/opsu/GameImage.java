@@ -18,6 +18,8 @@
 
 package itdelatrisu.opsu;
 
+import itdelatrisu.opsu.states.SongMenu;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -366,6 +368,54 @@ public enum GameImage {
 	},
 
 	// Non-Game Components
+	SELECTION_MODS ("selection-mods", "png", false, false) {
+		@Override
+		protected Image process_sub(Image img, int w, int h) {
+			return img.getScaledCopy((h * 0.115f) / img.getHeight());
+		}
+	},
+	SELECTION_MODS_OVERLAY ("selection-mods-over", "png", false, false) {
+		@Override
+		protected Image process_sub(Image img, int w, int h) {
+			return img.getScaledCopy((h * 0.115f) / img.getHeight());
+		}
+	},
+	SELECTION_RANDOM ("selection-random", "png", false, false) {
+		@Override
+		protected Image process_sub(Image img, int w, int h) {
+			return img.getScaledCopy((h * 0.115f) / img.getHeight());
+		}
+	},
+	SELECTION_RANDOM_OVERLAY ("selection-random-over", "png", false, false) {
+		@Override
+		protected Image process_sub(Image img, int w, int h) {
+			return img.getScaledCopy((h * 0.115f) / img.getHeight());
+		}
+	},
+	SELECTION_OPTIONS ("selection-options", "png", false, false) {
+		@Override
+		protected Image process_sub(Image img, int w, int h) {
+			return img.getScaledCopy((h * 0.115f) / img.getHeight());
+		}
+	},
+	SELECTION_OPTIONS_OVERLAY ("selection-options-over", "png", false, false) {
+		@Override
+		protected Image process_sub(Image img, int w, int h) {
+			return img.getScaledCopy((h * 0.115f) / img.getHeight());
+		}
+	},
+	SELECTION_OTHER_OPTIONS ("selection-selectoptions", "png", false, false) {
+		@Override
+		protected Image process_sub(Image img, int w, int h) {
+			return img.getScaledCopy((h * 0.115f) / img.getHeight());
+		}
+	},
+	SELECTION_OTHER_OPTIONS_OVERLAY ("selection-selectoptions-over", "png", false, false) {
+		@Override
+		protected Image process_sub(Image img, int w, int h) {
+			return img.getScaledCopy((h * 0.115f) / img.getHeight());
+		}
+	},
 	VOLUME ("volume-bg", "png", false, false) {
 		@Override
 		protected Image process_sub(Image img, int w, int h) {
@@ -381,25 +431,14 @@ public enum GameImage {
 	MENU_BUTTON_BG ("menu-button-background", "png", false, false) {
 		@Override
 		protected Image process_sub(Image img, int w, int h) {
-			return img.getScaledCopy(w / 2, h / 6);
+			// TODO: scale these properly (messy due to non-cropped images)
+			return img.getScaledCopy(w / 2, (int) (h * 0.95f) / SongMenu.MAX_SONG_BUTTONS);
 		}
 	},
 	MENU_TAB ("selection-tab", "png", false, false) {
 		@Override
 		protected Image process_sub(Image img, int w, int h) {
 			return img.getScaledCopy((h * 0.033f) / img.getHeight());
-		}
-	},
-	MENU_SEARCH ("search", "png", false, false) {
-		@Override
-		protected Image process_sub(Image img, int w, int h) {
-			return img.getScaledCopy(Utils.FONT_BOLD.getLineHeight() * 2f / img.getHeight());
-		}
-	},
-	MENU_OPTIONS ("options", "png", false, false) {
-		@Override
-		protected Image process_sub(Image img, int w, int h) {
-			return img.getScaledCopy(Utils.FONT_BOLD.getLineHeight() * 2f / img.getHeight());
 		}
 	},
 	MENU_MUSICNOTE ("music-note", "png", false, false) {
@@ -444,10 +483,30 @@ public enum GameImage {
 	MENU_BUTTON_MID ("button-middle", "png", false, false),
 	MENU_BUTTON_LEFT ("button-left", "png", false, false),
 	MENU_BUTTON_RIGHT ("button-right", "png", false, false),
-	MUSIC_PLAY ("music-play", "png", false, false),
-	MUSIC_PAUSE ("music-pause", "png", false, false),
-	MUSIC_NEXT ("music-next", "png", false, false),
-	MUSIC_PREVIOUS ("music-previous", "png", false, false),
+	MUSIC_PLAY ("music-play", "png", false, false) {
+		@Override
+		protected Image process_sub(Image img, int w, int h) {
+			return img.getScaledCopy((h / 18f) / img.getHeight());
+		}
+	},
+	MUSIC_PAUSE ("music-pause", "png", false, false) {
+		@Override
+		protected Image process_sub(Image img, int w, int h) {
+			return img.getScaledCopy((h / 18f) / img.getHeight());
+		}
+	},
+	MUSIC_NEXT ("music-next", "png", false, false) {
+		@Override
+		protected Image process_sub(Image img, int w, int h) {
+			return img.getScaledCopy((h / 18f) / img.getHeight());
+		}
+	},
+	MUSIC_PREVIOUS ("music-previous", "png", false, false) {
+		@Override
+		protected Image process_sub(Image img, int w, int h) {
+			return img.getScaledCopy((h / 18f) / img.getHeight());
+		}
+	},
 	RANKING_RETRY ("ranking-retry", "png", false, false) {
 		@Override
 		protected Image process_sub(Image img, int w, int h) {
