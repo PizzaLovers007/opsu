@@ -253,9 +253,10 @@ public class SongMenu extends BasicGameState {
 		search.setMaxLength(60);
 
 		// selection buttons
-		float selectX = GameImage.MENU_BACK.getImage().getWidth() * 1.75f;
-		float selectY = height - GameImage.SELECTION_MODS.getImage().getHeight() / 2f;
-		float selectOffset = GameImage.SELECTION_MODS.getImage().getWidth() * 1.05f;
+		Image selectionMods = GameImage.SELECTION_MODS.getImage();
+		float selectX = width * 0.183f + selectionMods.getWidth() / 2f;
+		float selectY = height - selectionMods.getHeight() / 2f;
+		float selectOffset = selectionMods.getWidth() * 1.05f;
 		selectModsButton = new MenuButton(GameImage.SELECTION_MODS_OVERLAY.getImage(),
 				selectX, selectY);
 		selectRandomButton = new MenuButton(GameImage.SELECTION_RANDOM_OVERLAY.getImage(),
@@ -291,14 +292,34 @@ public class SongMenu extends BasicGameState {
 				GameImage.PLAYFIELD.getImage().draw();
 		}
 
+		// song buttons
+		OsuGroupNode node = startNode;
+		int songButtonIndex = 0;
+		if (node != null && node.prev != null) {
+			node = node.prev;
+			songButtonIndex = -1;
+		}
+		g.setClip(0, (int) (headerY + DIVIDER_LINE_WIDTH / 2), width, (int) (footerY - headerY));
+		for (int i = songButtonIndex; i <= MAX_SONG_BUTTONS && node != null; i++, node = node.next) {
+			// draw the node
+			float offset = (i == hoverIndex) ? hoverOffset : 0f;
+			ScoreData[] scores = getScoreDataForNode(node, false);
+			node.draw(buttonX - offset, buttonY + (i*buttonOffset) + DIVIDER_LINE_WIDTH / 2,
+			          (scores == null) ? Grade.NULL : scores[0].getGrade(), (node == focusNode));
+
+			// load glyphs
+			Utils.loadGlyphs(node.osuFiles.get(0));
+		}
+		g.clearClip();
+
 		// top/bottom bars
-		g.setColor(Color.black);
+		g.setColor(Utils.COLOR_BLACK_ALPHA);
 		g.fillRect(0, 0, width, headerY);
 		g.fillRect(0, footerY, width, height - footerY);
 		g.setColor(Utils.COLOR_BLUE_DIVIDER);
 		g.setLineWidth(DIVIDER_LINE_WIDTH);
 		g.drawLine(0, headerY, width, headerY);
-		g.drawLine(0, footerY - DIVIDER_LINE_WIDTH / 2, width, footerY - DIVIDER_LINE_WIDTH / 2);
+		g.drawLine(0, footerY, width, footerY);
 		g.resetLineWidth();
 
 		// header
@@ -310,36 +331,20 @@ public class SongMenu extends BasicGameState {
 			else
 				musicNote.draw(marginX, marginY);
 			int iconWidth = musicNote.getWidth();
-			int iconHeight = musicNote.getHeight();
 
 			if (songInfo == null)
 				songInfo = focusNode.getInfo();
 			marginX += 5;
-			Utils.FONT_LARGE.drawString(marginX + iconWidth * 1.05f, marginY, songInfo[0], Color.white);
-			Utils.FONT_DEFAULT.drawString(marginX + iconWidth * 1.05f, marginY + Utils.FONT_LARGE.getLineHeight() * 0.75f, songInfo[1], Color.white);
-			float headerTextY = marginY + iconHeight;
+			float headerTextY = marginY;
+			Utils.FONT_LARGE.drawString(marginX + iconWidth * 1.05f, headerTextY, songInfo[0], Color.white);
+			headerTextY += Utils.FONT_LARGE.getLineHeight() - 8;
+			Utils.FONT_DEFAULT.drawString(marginX + iconWidth * 1.05f, headerTextY, songInfo[1], Color.white);
+			headerTextY += Utils.FONT_DEFAULT.getLineHeight() - 2;
 			Utils.FONT_BOLD.drawString(marginX, headerTextY, songInfo[2], Color.white);
-			headerTextY += Utils.FONT_BOLD.getLineHeight() - 6;
+			headerTextY += Utils.FONT_BOLD.getLineHeight() - 4;
 			Utils.FONT_DEFAULT.drawString(marginX, headerTextY, songInfo[3], Color.white);
 			headerTextY += Utils.FONT_DEFAULT.getLineHeight() - 4;
 			Utils.FONT_SMALL.drawString(marginX, headerTextY, songInfo[4], Color.white);
-		}
-
-		// song buttons
-		OsuGroupNode node = startNode;
-		for (int i = 0; i < MAX_SONG_BUTTONS && node != null; i++, node = node.next) {
-			// draw the node
-			float offset = (i == hoverIndex) ? hoverOffset : 0f;
-			ScoreData[] scores = getScoreDataForNode(node, false);
-			node.draw(
-					buttonX - offset, buttonY + (i*buttonOffset),
-					headerY + DIVIDER_LINE_WIDTH / 2, footerY - DIVIDER_LINE_WIDTH,
-					(scores == null) ? Grade.NULL : scores[0].getGrade(),
-					(node == focusNode)
-			);
-
-			// load glyphs
-			Utils.loadGlyphs(node.osuFiles.get(0));
 		}
 
 		// score buttons
@@ -359,9 +364,8 @@ public class SongMenu extends BasicGameState {
 		}
 
 		// selection buttons
-		// TODO
-//		GameImage.SELECTION_MODS.getImage().drawCentered(selectModsButton.getX(), selectModsButton.getY());
-//		selectModsButton.draw();
+		GameImage.SELECTION_MODS.getImage().drawCentered(selectModsButton.getX(), selectModsButton.getY());
+		selectModsButton.draw();
 		GameImage.SELECTION_RANDOM.getImage().drawCentered(selectRandomButton.getX(), selectRandomButton.getY());
 		selectRandomButton.draw();
 		GameImage.SELECTION_OPTIONS.getImage().drawCentered(selectMapOptionsButton.getX(), selectMapOptionsButton.getY());
@@ -631,7 +635,7 @@ public class SongMenu extends BasicGameState {
 					(y > buttonY + (i * buttonOffset) && y < buttonY + (i * buttonOffset) + buttonHeight)) {
 					float oldHoverOffset = hoverOffset;
 					int oldHoverIndex = hoverIndex;
-	
+
 					// clicked node is already expanded
 					if (node.index == expandedIndex) {
 						if (node.osuFileIndex == focusNode.osuFileIndex) {
@@ -646,21 +650,21 @@ public class SongMenu extends BasicGameState {
 							setFocus(node, 0, false);
 						}
 					}
-	
+
 					// clicked node is a new group
 					else {
 						SoundController.playSound(SoundEffect.MENUCLICK);
 						setFocus(node, -1, false);
 					}
-	
+
 					// restore hover data
 					hoverOffset = oldHoverOffset;
 					hoverIndex = oldHoverIndex;
-	
+
 					// open beatmap menu
 					if (button == Input.MOUSE_RIGHT_BUTTON)
 						beatmapMenuTimer = (node.index == expandedIndex) ? BEATMAP_MENU_DELAY * 4 / 5 : 0;
-	
+
 					return;
 				}
 			}
@@ -714,9 +718,9 @@ public class SongMenu extends BasicGameState {
 			}
 			break;
 		case Input.KEY_F1:
-			// TODO: mods menu
-//			SoundController.playSound(SoundEffect.MENUHIT);
-//			game.enterState();
+			SoundController.playSound(SoundEffect.MENUHIT);
+			((ButtonMenu) game.getState(Opsu.STATE_BUTTONMENU)).setMenuState(MenuState.MODS);
+			game.enterState(Opsu.STATE_BUTTONMENU);
 			break;
 		case Input.KEY_F2:
 			if (focusNode == null)
@@ -1102,11 +1106,11 @@ public class SongMenu extends BasicGameState {
 	/**
 	 * Sets a new focus node.
 	 * @param node the base node; it will be expanded if it isn't already
-	 * @param pos the OsuFile element to focus; if out of bounds, it will be randomly chosen
-	 * @param flag if true, startNode will be set to the first node in the group
+	 * @param osuFileIndex the OsuFile element to focus; if out of bounds, it will be randomly chosen
+	 * @param changeStartNode if true, startNode will be set to the first node in the group
 	 * @return the old focus node
 	 */
-	public OsuGroupNode setFocus(OsuGroupNode node, int pos, boolean flag) {
+	public OsuGroupNode setFocus(OsuGroupNode node, int osuFileIndex, boolean changeStartNode) {
 		if (node == null)
 			return null;
 
@@ -1122,18 +1126,18 @@ public class SongMenu extends BasicGameState {
 
 			// if start node was previously expanded, move it
 			if (startNode != null && startNode.index == expandedIndex)
-				startNode = node;
+				startNode = OsuGroupList.get().getBaseNode(startNode.index);
 		}
 
-		// check pos bounds
+		// check osuFileIndex bounds
 		int length = node.osuFiles.size();
-		if (pos < 0 || pos > length - 1)  // set a random pos
-			pos = (int) (Math.random() * length);
+		if (osuFileIndex < 0 || osuFileIndex > length - 1)  // set a random index
+			osuFileIndex = (int) (Math.random() * length);
 
 		// change the focus node
-		if (flag || (startNode.index == 0 && startNode.osuFileIndex == -1 && startNode.prev == null))
+		if (changeStartNode || (startNode.index == 0 && startNode.osuFileIndex == -1 && startNode.prev == null))
 			startNode = node;
-		focusNode = OsuGroupList.get().getNode(node, pos);
+		focusNode = OsuGroupList.get().getNode(node, osuFileIndex);
 		OsuFile osu = focusNode.osuFiles.get(focusNode.osuFileIndex);
 		MusicController.play(osu, true);
 		Utils.loadGlyphs(osu);

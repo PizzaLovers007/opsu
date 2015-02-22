@@ -54,20 +54,19 @@ public class OsuGroupNode {
 	 * Draws the button.
 	 * @param x the x coordinate
 	 * @param y the y coordinate
-	 * @param headerY the header end y coordinate (for cropping)
-	 * @param footerY the footer start y coordinate (for cropping)
 	 * @param grade the highest grade, if any
 	 * @param focus true if this is the focused node
 	 */
-	public void draw(float x, float y, float headerY, float footerY, Grade grade, boolean focus) {
+	public void draw(float x, float y, Grade grade, boolean focus) {
+		Image bg = GameImage.MENU_BUTTON_BG.getImage();
 		boolean expanded = (osuFileIndex > -1);
 		OsuFile osu;
-		Image bg = GameImage.MENU_BUTTON_BG.getImage();
+		bg.setAlpha(0.9f);
 		Color bgColor;
 		Color textColor = Color.lightGray;
 
-		// draw song button background
-		if (expanded) {  // expanded
+		// get drawing parameters
+		if (expanded) {
 			x -= bg.getWidth() / 10f;
 			if (focus) {
 				bgColor = Color.white;
@@ -79,17 +78,7 @@ public class OsuGroupNode {
 			bgColor = Utils.COLOR_ORANGE_BUTTON;
 			osu = osuFiles.get(0);
 		}
-		// crop image if necessary
-		if (y < headerY) {
-			int cropHeight = (int) (headerY - y);
-			Image bgCropped = bg.getSubImage(0, cropHeight, bg.getWidth(), bg.getHeight() - cropHeight);
-			bgCropped.draw(x, headerY, bgColor);
-		} else if (y + bg.getHeight() > footerY) {
-			int cropHeight = (int) (footerY - y);
-			Image bgCropped = bg.getSubImage(0, 0, bg.getWidth(), cropHeight);
-			bgCropped.draw(x, y, bgColor);
-		} else
-			bg.draw(x, y, bgColor);
+		bg.draw(x, y, bgColor);
 
 		float cx = x + (bg.getWidth() * 0.05f);
 		float cy = y + (bg.getHeight() * 0.2f) - 3;

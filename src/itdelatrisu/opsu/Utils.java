@@ -70,8 +70,8 @@ public class Utils {
 		COLOR_WHITE_ALPHA     = new Color(255, 255, 255, 0.5f),
 		COLOR_BLUE_DIVIDER    = new Color(49, 94, 237),
 		COLOR_BLUE_BACKGROUND = new Color(74, 130, 255),
-		COLOR_BLUE_BUTTON     = new Color(50, 189, 237),
-		COLOR_ORANGE_BUTTON   = new Color(230, 151, 87),
+		COLOR_BLUE_BUTTON     = new Color(40, 129, 237),
+		COLOR_ORANGE_BUTTON   = new Color(200, 90, 3),
 		COLOR_GREEN_OBJECT    = new Color(26, 207, 26),
 		COLOR_BLUE_OBJECT     = new Color(46, 136, 248),
 		COLOR_RED_OBJECT      = new Color(243, 48, 77),
@@ -87,8 +87,8 @@ public class Utils {
 
 	/** The default map colors, used when a map does not provide custom colors. */
 	public static final Color[] DEFAULT_COMBO = {
-		COLOR_GREEN_OBJECT, COLOR_BLUE_OBJECT,
-		COLOR_RED_OBJECT, COLOR_ORANGE_OBJECT
+		COLOR_ORANGE_OBJECT, COLOR_GREEN_OBJECT,
+		COLOR_BLUE_OBJECT, COLOR_RED_OBJECT,
 	};
 
 	/** Game fonts. */
@@ -213,8 +213,7 @@ public class Utils {
 		}
 
 		// initialize game mods
-		for (GameMod mod : GameMod.values())
-			mod.init(width, height);
+		GameMod.init(width, height);
 
 		// initialize hit objects
 		OsuHitObject.init(width, height);
@@ -223,10 +222,13 @@ public class Utils {
 		DownloadNode.init(width, height);
 
 		// back button
-		Image back = GameImage.MENU_BACK.getImage();
-		backButton = new MenuButton(back,
-				back.getWidth() / 2f,
-				height - (back.getHeight() / 2f));
+		if (GameImage.MENU_BACK.getImages() != null) {
+			Animation back = GameImage.MENU_BACK.getAnimation(120);
+			backButton = new MenuButton(back, back.getWidth() / 2f, height - (back.getHeight() / 2f));
+		} else {
+			Image back = GameImage.MENU_BACK.getImage();
+			backButton = new MenuButton(back, back.getWidth() / 2f, height - (back.getHeight() / 2f));
+		}
 		backButton.setHoverExpand(MenuButton.Expand.UP_RIGHT);
 	}
 
@@ -256,19 +258,8 @@ public class Utils {
 			filter = (isHover) ? Utils.COLOR_RED_HOVER : Color.red;
 			textColor = Color.white;
 		}
-		Utils.drawCentered(tabImage, x, y, filter);
+		tabImage.drawCentered(x, y, filter);
 		Utils.FONT_MEDIUM.drawString(tabTextX, tabTextY, text, textColor);
-	}
-
-	/**
-	 * Draws an image based on its center with a color filter.
-	 * @param img the image to draw
-	 * @param x the center x coordinate
-	 * @param y the center y coordinate
-	 * @param color the color filter to apply
-	 */
-	public static void drawCentered(Image img, float x, float y, Color color) {
-		img.draw(x - (img.getWidth() / 2f), y - (img.getHeight() / 2f), color);
 	}
 
 	/**

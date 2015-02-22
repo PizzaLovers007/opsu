@@ -89,13 +89,13 @@ public class Circle implements HitObject {
 
 			float approachScale = 1 + scale * 3;
 			color.a = 1 - scale;
-			Utils.drawCentered(GameImage.APPROACHCIRCLE.getImage().getScaledCopy(approachScale), x, y, color);
+			GameImage.APPROACHCIRCLE.getImage().getScaledCopy(approachScale).drawCentered(x, y, color);
 
 			float alpha = Utils.clamp((1 - scale) * 2, 0, 1);
 			color.a = alpha;
 			Utils.COLOR_WHITE_FADE.a = alpha;
-			Utils.drawCentered(GameImage.HITCIRCLE.getImage(), x, y, color);
-			Utils.drawCentered(GameImage.HITCIRCLE_OVERLAY.getImage(), x, y, Utils.COLOR_WHITE_FADE);
+			GameImage.HITCIRCLE.getImage().drawCentered(x, y, color);
+			GameImage.HITCIRCLE_OVERLAY.getImage().drawCentered(x, y, Utils.COLOR_WHITE_FADE);
 
 			color.a = oldAlpha;
 			Utils.COLOR_WHITE_FADE.a = 1f;
@@ -141,7 +141,7 @@ public class Circle implements HitObject {
 				data.hitResult(
 						hitObject.getTime(), result,
 						hitObject.getX(), hitObject.getY(),
-						color, comboEnd, hitObject.getHitSoundType()
+						color, comboEnd, hitObject.getHitSoundType(), false
 				);
 				return true;
 			}
@@ -161,17 +161,17 @@ public class Circle implements HitObject {
 
 		if (overlap || trackPosition > time + hitResultOffset[GameData.HIT_50]) {
 			if (isAutoMod)  // "auto" mod: catch any missed notes due to lag
-				data.hitResult(time, GameData.HIT_300, x, y, color, comboEnd, hitSound);
+				data.hitResult(time, GameData.HIT_300, x, y, color, comboEnd, hitSound, false);
 
 			else  // no more points can be scored, so send a miss
-				data.hitResult(time, GameData.HIT_MISS, x, y, null, comboEnd, hitSound);
+				data.hitResult(time, GameData.HIT_MISS, x, y, null, comboEnd, hitSound, false);
 			return true;
 		}
 
 		// "auto" mod: send a perfect hit result
 		else if (isAutoMod) {
 			if (Math.abs(trackPosition - time) < hitResultOffset[GameData.HIT_300]) {
-				data.hitResult(time, GameData.HIT_300, x, y, color, comboEnd, hitSound);
+				data.hitResult(time, GameData.HIT_300, x, y, color, comboEnd, hitSound, false);
 				return true;
 			}
 		}
