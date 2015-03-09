@@ -79,7 +79,7 @@ public class Circle implements HitObject {
 	}
 
 	@Override
-	public void draw(int trackPosition, boolean currentObject, Graphics g) {
+	public void draw(Graphics g, int trackPosition) {
 		int timeDiff = hitObject.getTime() - trackPosition;
 
 		if (timeDiff >= 0) {
@@ -141,7 +141,7 @@ public class Circle implements HitObject {
 				data.hitResult(
 						hitObject.getTime(), result,
 						hitObject.getX(), hitObject.getY(),
-						color, comboEnd, hitObject.getHitSoundType(), false
+						color, comboEnd, hitObject, 0
 				);
 				return true;
 			}
@@ -153,7 +153,6 @@ public class Circle implements HitObject {
 	public boolean update(boolean overlap, int delta, int mouseX, int mouseY) {
 		int time = hitObject.getTime();
 		float x = hitObject.getX(), y = hitObject.getY();
-		byte hitSound = hitObject.getHitSoundType();
 
 		int trackPosition = MusicController.getPosition();
 		int[] hitResultOffset = game.getHitResultOffsets();
@@ -161,20 +160,24 @@ public class Circle implements HitObject {
 
 		if (overlap || trackPosition > time + hitResultOffset[GameData.HIT_50]) {
 			if (isAutoMod)  // "auto" mod: catch any missed notes due to lag
-				data.hitResult(time, GameData.HIT_300, x, y, color, comboEnd, hitSound, false);
+				data.hitResult(time, GameData.HIT_300, x, y, color, comboEnd, hitObject, 0);
 
 			else  // no more points can be scored, so send a miss
-				data.hitResult(time, GameData.HIT_MISS, x, y, null, comboEnd, hitSound, false);
+				data.hitResult(time, GameData.HIT_MISS, x, y, null, comboEnd, hitObject, 0);
 			return true;
 		}
 
 		// "auto" mod: send a perfect hit result
 		else if (isAutoMod) {
 			if (Math.abs(trackPosition - time) < hitResultOffset[GameData.HIT_300]) {
-				data.hitResult(time, GameData.HIT_300, x, y, color, comboEnd, hitSound, false);
+				data.hitResult(time, GameData.HIT_300, x, y, color, comboEnd, hitObject, 0);
 				return true;
 			}
 		}
+
+		// "relax" mod: click automatically
+		else if (GameMod.RELAX.isActive() && trackPosition >= time)
+			return mousePressed(mouseX, mouseY);
 
 		return false;
 	}

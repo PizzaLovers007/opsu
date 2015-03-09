@@ -143,24 +143,22 @@ public class Slider implements HitObject {
 
 	@SuppressWarnings("deprecation")
 	@Override
-	public void draw(int trackPosition, boolean currentObject, Graphics g) {
+	public void draw(Graphics g, int trackPosition) {
 		int timeDiff = hitObject.getTime() - trackPosition;
 		float scale = timeDiff / (float) game.getApproachTime();
 		float approachScale = 1 + scale * 3;
 		float x = hitObject.getX(), y = hitObject.getY();
+		float alpha = Utils.clamp(1 - scale, 0, 1);
 
 		float oldAlpha = color.a;
-		float oldAlphaFade = Utils.COLOR_WHITE_FADE.a;
-		float alpha = (1 - scale);
-		color.a = Utils.clamp(alpha * 0.5f, 0, 1);
-		alpha = Utils.clamp(alpha, 0, 1);
+		color.a = alpha;
 		Utils.COLOR_WHITE_FADE.a = alpha;
 
 		// curve
 		curve.draw();
 
 		// ticks
-		if (currentObject && ticksT != null) {
+		if (timeDiff < 0 && ticksT != null) {
 			Image tick = GameImage.SLIDER_TICK.getImage();
 			for (int i = 0; i < ticksT.length; i++) {
 				float[] c = curve.pointAt(ticksT[i]);
@@ -171,6 +169,7 @@ public class Slider implements HitObject {
 		Image hitCircleOverlay = GameImage.HITCIRCLE_OVERLAY.getImage();
 		Image hitCircle = GameImage.HITCIRCLE.getImage();
 		color.a = alpha;
+		Utils.COLOR_WHITE_FADE.a = 1f;
 
 		// end circle
 		float[] endPos = curve.pointAt(1);
@@ -187,7 +186,6 @@ public class Slider implements HitObject {
 					hitCircle.getWidth() * 0.40f / data.getDefaultSymbolImage(0).getHeight());
 
 		color.a = oldAlpha;
-		Utils.COLOR_WHITE_FADE.a = oldAlphaFade;
 
 		// repeats
 		for(int tcurRepeat = currentRepeats; tcurRepeat<=currentRepeats+1; tcurRepeat++){
@@ -255,10 +253,10 @@ public class Slider implements HitObject {
 		if (currentRepeats % 2 == 0) {  // last circle
 			float[] lastPos = curve.pointAt(1);
 			data.hitResult(hitObject.getTime() + (int) sliderTimeTotal, result,
-					lastPos[0],lastPos[1], color, comboEnd, hitObject.getHitSoundType(), false);
+					lastPos[0], lastPos[1], color, comboEnd, hitObject, currentRepeats + 1);
 		} else {  // first circle
 			data.hitResult(hitObject.getTime() + (int) sliderTimeTotal, result,
-					hitObject.getX(), hitObject.getY(), color, comboEnd, hitObject.getHitSoundType(), false);
+					hitObject.getX(), hitObject.getY(), color, comboEnd, hitObject, currentRepeats + 1);
 		}
 
 		return result;
@@ -288,7 +286,7 @@ public class Slider implements HitObject {
 				data.addHitError(hitObject.getTime(), x,y,trackPosition - hitObject.getTime());
 				sliderClickedInitial = true;
 				data.sliderTickResult(hitObject.getTime(), result,
-						hitObject.getX(), hitObject.getY(), hitObject.getHitSoundType());
+						hitObject.getX(), hitObject.getY(), hitObject, currentRepeats);
 				return true;
 			}
 		}
@@ -317,7 +315,6 @@ public class Slider implements HitObject {
 			}
 		}
 
-		byte hitSound = hitObject.getHitSoundType();
 		int trackPosition = MusicController.getPosition();
 		int[] hitResultOffset = game.getHitResultOffsets();
 		int lastIndex = hitObject.getSliderX().length - 1;
@@ -332,10 +329,10 @@ public class Slider implements HitObject {
 				if (isAutoMod) {  // "auto" mod: catch any missed notes due to lag
 					ticksHit++;
 					data.sliderTickResult(time, GameData.HIT_SLIDER30,
-							hitObject.getX(), hitObject.getY(), hitSound);
+							hitObject.getX(), hitObject.getY(), hitObject, currentRepeats);
 				} else
 					data.sliderTickResult(time, GameData.HIT_MISS,
-							hitObject.getX(), hitObject.getY(), hitSound);
+							hitObject.getX(), hitObject.getY(), hitObject, currentRepeats);
 			}
 
 			// "auto" mod: send a perfect hit result
@@ -344,9 +341,13 @@ public class Slider implements HitObject {
 					ticksHit++;
 					sliderClickedInitial = true;
 					data.sliderTickResult(time, GameData.HIT_SLIDER30,
-							hitObject.getX(), hitObject.getY(), hitSound);
+							hitObject.getX(), hitObject.getY(), hitObject, currentRepeats);
 				}
 			}
+
+			// "relax" mod: click automatically
+			else if (GameMod.RELAX.isActive() && trackPosition >= time)
+				mousePressed(mouseX, mouseY);
 		}
 
 		// end of slider
@@ -354,7 +355,7 @@ public class Slider implements HitObject {
 			tickIntervals++;
 
 			// check if cursor pressed and within end circle
-			if (Utils.isGameKeyPressed()) {
+			if (Utils.isGameKeyPressed() || GameMod.RELAX.isActive()) {
 				float[] c = curve.pointAt(getT(trackPosition, false));
 				double distance = Math.hypot(c[0] - mouseX, c[1] - mouseY);
 				int followCircleRadius = GameImage.SLIDER_FOLLOWCIRCLE.getImage().getWidth() / 2;
@@ -403,7 +404,7 @@ public class Slider implements HitObject {
 		float[] c = curve.pointAt(getT(trackPosition, false));
 		double distance = Math.hypot(c[0] - mouseX, c[1] - mouseY);
 		int followCircleRadius = GameImage.SLIDER_FOLLOWCIRCLE.getImage().getWidth() / 2;
-		if ((Utils.isGameKeyPressed() && distance < followCircleRadius) || isAutoMod) {
+		if (((Utils.isGameKeyPressed() || GameMod.RELAX.isActive()) && distance < followCircleRadius) || isAutoMod) {
 			// mouse pressed and within follow circle
 			followCircleActive = true;
 			data.changeHealth(delta * GameData.HP_DRAIN_MULTIPLIER);
@@ -413,17 +414,18 @@ public class Slider implements HitObject {
 				ticksHit++;
 				if (currentRepeats % 2 > 0)  // last circle
 					data.sliderTickResult(trackPosition, GameData.HIT_SLIDER30,
-							hitObject.getSliderX()[lastIndex], hitObject.getSliderY()[lastIndex], hitSound);
+							hitObject.getSliderX()[lastIndex], hitObject.getSliderY()[lastIndex],
+							hitObject, currentRepeats);
 				else  // first circle
 					data.sliderTickResult(trackPosition, GameData.HIT_SLIDER30,
-							c[0], c[1], hitSound);
+							c[0], c[1], hitObject, currentRepeats);
 			}
 
 			// held during new tick
 			if (isNewTick) {
 				ticksHit++;
 				data.sliderTickResult(trackPosition, GameData.HIT_SLIDER10,
-						c[0], c[1], (byte) -1);
+						c[0], c[1], hitObject, currentRepeats);
 			}
 
 			// held near end of slider
@@ -433,9 +435,9 @@ public class Slider implements HitObject {
 			followCircleActive = false;
 
 			if (isNewRepeat)
-				data.sliderTickResult(trackPosition, GameData.HIT_MISS, 0, 0, (byte) -1);
+				data.sliderTickResult(trackPosition, GameData.HIT_MISS, 0, 0, hitObject, currentRepeats);
 			if (isNewTick)
-				data.sliderTickResult(trackPosition, GameData.HIT_MISS, 0, 0, (byte) -1);
+				data.sliderTickResult(trackPosition, GameData.HIT_MISS, 0, 0, hitObject, currentRepeats);
 		}
 
 		return false;

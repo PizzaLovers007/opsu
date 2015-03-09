@@ -3,16 +3,28 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>itdelatrisu</groupId>
 	<artifactId>opsu</artifactId>
-	<version>0.6.0</version>
-
+	<version>0.7.0</version>
+	<properties>
+		<timestamp>${maven.build.timestamp}</timestamp>
+		<maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
+	</properties>
 	<build>
 		<sourceDirectory>src</sourceDirectory>
 		<resources>
 			<resource>
+				<filtering>false</filtering>
 				<directory>res</directory>
 				<excludes>
 					<exclude>**/Thumbs.db</exclude>
+					<exclude>**/version</exclude>
 				</excludes>
+			</resource>
+			<resource>
+				<filtering>true</filtering>
+				<directory>res</directory>
+				<includes>
+					<include>**/version</include>
+				</includes>
 			</resource>
 		</resources>
 		<plugins>
@@ -100,8 +112,10 @@
 							<!-- Overwritten classes -->
 							<artifact>org.slick2d:slick2d-core</artifact>
 							<excludes>
+								<exclude>org/newdawn/slick/GameContainer.*</exclude>
 								<exclude>org/newdawn/slick/Image.*</exclude>
 								<exclude>org/newdawn/slick/Music.*</exclude>
+								<exclude>org/newdawn/slick/gui/TextField.*</exclude>
 								<exclude>org/newdawn/slick/openal/AudioInputStream*</exclude>
 								<exclude>org/newdawn/slick/openal/OpenALStreamPlayer*</exclude>
 								<exclude>org/newdawn/slick/openal/SoundStore*</exclude>
@@ -177,6 +191,11 @@
 			<groupId>net.java.dev.jna</groupId>
 			<artifactId>jna-platform</artifactId>
 			<version>4.1.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.maven</groupId>
+			<artifactId>maven-artifact</artifactId>
+			<version>3.0.3</version>
 		</dependency>
 	</dependencies>
 </project>

@@ -22,6 +22,7 @@ import itdelatrisu.opsu.GameImage;
 import itdelatrisu.opsu.MenuButton;
 import itdelatrisu.opsu.Opsu;
 import itdelatrisu.opsu.Options;
+import itdelatrisu.opsu.UI;
 import itdelatrisu.opsu.Utils;
 import itdelatrisu.opsu.audio.MusicController;
 import itdelatrisu.opsu.audio.SoundController;
@@ -99,16 +100,13 @@ public class GamePauseMenu extends BasicGameState {
 		retryButton.draw();
 		backButton.draw();
 
-		Utils.drawVolume(g);
-		Utils.drawFPS();
-		Utils.drawCursor();
+		UI.draw(g);
 	}
 
 	@Override
 	public void update(GameContainer container, StateBasedGame game, int delta)
 			throws SlickException {
-		Utils.updateCursor(delta);
-		Utils.updateVolumeDisplay(delta);
+		UI.update(delta);
 		int mouseX = input.getMouseX(), mouseY = input.getMouseY();
 		continueButton.hoverUpdate(delta, mouseX, mouseY);
 		retryButton.hoverUpdate(delta, mouseX, mouseY);
@@ -135,7 +133,7 @@ public class GamePauseMenu extends BasicGameState {
 				SoundController.playSound(SoundEffect.MENUBACK);
 				((SongMenu) game.getState(Opsu.STATE_SONGMENU)).resetGameDataOnLoad();
 				MusicController.playAt(MusicController.getOsuFile().previewTime, true);
-				Utils.resetCursor();
+				UI.resetCursor();
 				game.enterState(Opsu.STATE_SONGMENU, new FadeOutTransition(Color.black), new FadeInTransition(Color.black));
 			} else {
 				SoundController.playSound(SoundEffect.MENUBACK);
@@ -149,6 +147,12 @@ public class GamePauseMenu extends BasicGameState {
 				gameState.setRestart(Game.Restart.MANUAL);
 				game.enterState(Opsu.STATE_GAME);
 			}
+			break;
+		case Input.KEY_F7:
+			Options.setNextFPS(container);
+			break;
+		case Input.KEY_F10:
+			Options.toggleMouseDisabled();
 			break;
 		case Input.KEY_F12:
 			Utils.takeScreenShot();
@@ -182,7 +186,7 @@ public class GamePauseMenu extends BasicGameState {
 				MusicController.playAt(MusicController.getOsuFile().previewTime, true);
 			else
 				MusicController.resume();
-			Utils.resetCursor();
+			UI.resetCursor();
 			game.enterState(Opsu.STATE_SONGMENU, new FadeOutTransition(Color.black), new FadeInTransition(Color.black));
 		}
 	}
@@ -190,6 +194,7 @@ public class GamePauseMenu extends BasicGameState {
 	@Override
 	public void enter(GameContainer container, StateBasedGame game)
 			throws SlickException {
+		UI.enter();
 		pauseStartTime = System.currentTimeMillis();
 		if (gameState.getRestart() == Game.Restart.LOSE) {
 			MusicController.fadeOut(FADEOUT_TIME);

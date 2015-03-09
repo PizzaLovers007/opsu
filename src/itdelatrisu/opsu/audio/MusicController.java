@@ -67,8 +67,11 @@ public class MusicController {
 	/**
 	 * Plays an audio file at the preview position.
 	 * If the audio file is already playing, then nothing will happen.
+	 * @param osu the OsuFile to play
+	 * @param loop whether or not to loop the track
+	 * @param preview whether to start at the preview time (true) or beginning (false)
 	 */
-	public static void play(final OsuFile osu, final boolean loop) {
+	public static void play(final OsuFile osu, final boolean loop, final boolean preview) {
 		// new track: load and play
 		if (lastOsu == null || !osu.audioFilename.equals(lastOsu.audioFilename)) {
 			reset();
@@ -80,7 +83,7 @@ public class MusicController {
 				trackLoader = new Thread() {
 					@Override
 					public void run() {
-						loadTrack(osu.audioFilename, osu.previewTime, loop);
+						loadTrack(osu.audioFilename, (preview) ? osu.previewTime : 0, loop);
 					}
 				};
 				trackLoader.start();
@@ -108,7 +111,10 @@ public class MusicController {
 			player = new Music(file.getPath(), true);
 			player.addListener(new MusicListener() {
 				@Override
-				public void musicEnded(Music music) { trackEnded = true; }
+				public void musicEnded(Music music) {
+					if (music == player)  // don't fire if music swapped
+						trackEnded = true;
+				}
 
 				@Override
 				public void musicSwapped(Music music, Music newMusic) {}
@@ -274,12 +280,21 @@ public class MusicController {
 	public static boolean trackEnded() { return trackEnded; }
 
 	/**
+	 * Loops the current track if it has ended.
+	 * @param preview whether to start at the preview time (true) or beginning (false)
+	 */
+	public static void loopTrackIfEnded(boolean preview) {
+		if (trackEnded && trackExists())
+			playAt((preview) ? lastOsu.previewTime : 0, false);
+	}
+
+	/**
 	 * Plays the theme song.
 	 */
 	public static void playThemeSong() {
 		OsuFile osu = Options.getOsuTheme();
 		if (osu != null) {
-			play(osu, true);
+			play(osu, true, false);
 			themePlaying = true;
 		}
 	}

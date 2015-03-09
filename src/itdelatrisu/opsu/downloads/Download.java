@@ -34,6 +34,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
+import org.newdawn.slick.util.Log;
+
 /**
  * File download.
  */
@@ -72,6 +74,15 @@ public class Download {
 		public String getName() { return name; }
 	}
 
+	/** Download listener interface. */
+	public interface DownloadListener {
+		/** Indication that a download has completed. */
+		public void completed();
+
+		/** Indication that an error has occurred. */
+		public void error();
+	}
+
 	/** The local path. */
 	private String localPath;
 
@@ -80,6 +91,9 @@ public class Download {
 
 	/** The download URL. */
 	private URL url;
+
+	/** The download listener. */
+	private DownloadListener listener;
 
 	/** The readable byte channel. */
 	private ReadableByteChannelWrapper rbc;
@@ -129,8 +143,24 @@ public class Download {
 			return;
 		}
 		this.localPath = localPath;
-		this.rename = rename;
+		this.rename = Utils.cleanFileName(rename, '-');
 	}
+
+	/**
+	 * Returns the remote download URL.
+	 */
+	public URL getRemoteURL() { return url; }
+
+	/**
+	 * Returns the local path to save the download (after renamed).
+	 */
+	public String getLocalPath() { return (rename != null) ? rename : localPath; }
+
+	/**
+	 * Sets the download listener.
+	 * @param listener the listener to set
+	 */
+	public void setListener(DownloadListener listener) { this.listener = listener; }
 
 	/**
 	 * Starts the download from the "waiting" status.
@@ -152,7 +182,9 @@ public class Download {
 					contentLength = conn.getContentLength();
 				} catch (IOException e) {
 					status = Status.ERROR;
-					ErrorHandler.error("Failed to open connection.", e, false);
+					Log.warn("Failed to open connection.", e);
+					if (listener != null)
+						listener.error();
 					return;
 				}
 
@@ -168,18 +200,22 @@ public class Download {
 					updateReadSoFar();
 					fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
 					if (status == Status.DOWNLOADING) {  // not interrupted
+						// TODO: if connection is lost before a download finishes, it's still marked as "complete"
 						status = Status.COMPLETE;
 						rbc.close();
 						fos.close();
 						if (rename != null) {
-							String cleanedName = Utils.cleanFileName(rename, '-');
 							Path source = new File(localPath).toPath();
-							Files.move(source, source.resolveSibling(cleanedName), StandardCopyOption.REPLACE_EXISTING);
+							Files.move(source, source.resolveSibling(rename), StandardCopyOption.REPLACE_EXISTING);
 						}
+						if (listener != null)
+							listener.completed();
 					}
 				} catch (Exception e) {
 					status = Status.ERROR;
-					ErrorHandler.error("Failed to start download.", e, false);
+					Log.warn("Failed to start download.", e);
+					if (listener != null)
+						listener.error();
 				}
 			}
 		}.start();

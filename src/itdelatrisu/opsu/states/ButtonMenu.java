@@ -22,10 +22,13 @@ import itdelatrisu.opsu.GameImage;
 import itdelatrisu.opsu.GameMod;
 import itdelatrisu.opsu.MenuButton;
 import itdelatrisu.opsu.Opsu;
+import itdelatrisu.opsu.Options;
 import itdelatrisu.opsu.OsuGroupList;
 import itdelatrisu.opsu.OsuGroupNode;
 import itdelatrisu.opsu.ScoreData;
+import itdelatrisu.opsu.UI;
 import itdelatrisu.opsu.Utils;
+import itdelatrisu.opsu.audio.MusicController;
 import itdelatrisu.opsu.audio.SoundController;
 import itdelatrisu.opsu.audio.SoundEffect;
 
@@ -150,8 +153,6 @@ public class ButtonMenu extends BasicGameState {
 
 			@Override
 			public void draw(GameContainer container, StateBasedGame game, Graphics g) {
-				super.draw(container, game, g);
-
 				int width = container.getWidth();
 				int height = container.getHeight();
 
@@ -171,9 +172,21 @@ public class ButtonMenu extends BasicGameState {
 							category.getName(), category.getColor());
 				}
 
-				// buttons (TODO: draw descriptions when hovering)
-				for (GameMod mod : GameMod.values())
+				// buttons
+				Input input = container.getInput();
+				int mouseX = input.getMouseX(), mouseY = input.getMouseY();
+				GameMod hoverMod = null;
+				for (GameMod mod : GameMod.values()) {
 					mod.draw();
+					if (hoverMod == null && mod.contains(mouseX, mouseY))
+						hoverMod = mod;
+				}
+
+				super.draw(container, game, g);
+
+				// tooltips
+				if (hoverMod != null && hoverMod.isImplemented())
+					UI.drawTooltip(g, hoverMod.getDescription(), true);
 			}
 
 			@Override
@@ -280,6 +293,8 @@ public class ButtonMenu extends BasicGameState {
 			// draw buttons
 			for (int i = 0; i < buttons.length; i++)
 				menuButtons[i].draw(buttons[i].getColor());
+
+			UI.draw(g);
 		}
 
 		/**
@@ -564,16 +579,13 @@ public class ButtonMenu extends BasicGameState {
 		g.setBackground(Color.black);
 		if (menuState != null)
 			menuState.draw(container, game, g);
-		Utils.drawVolume(g);
-		Utils.drawFPS();
-		Utils.drawCursor();
 	}
 
 	@Override
 	public void update(GameContainer container, StateBasedGame game, int delta)
 			throws SlickException {
-		Utils.updateCursor(delta);
-		Utils.updateVolumeDisplay(delta);
+		UI.update(delta);
+		MusicController.loopTrackIfEnded(false);
 		if (menuState != null)
 			menuState.update(container, delta, input.getMouseX(), input.getMouseY());
 	}
@@ -598,6 +610,12 @@ public class ButtonMenu extends BasicGameState {
 			if (menuState != null)
 				menuState.leave(container, game);
 			break;
+		case Input.KEY_F7:
+			Options.setNextFPS(container);
+			break;
+		case Input.KEY_F10:
+			Options.toggleMouseDisabled();
+			break;
 		case Input.KEY_F12:
 			Utils.takeScreenShot();
 			break;
@@ -611,6 +629,7 @@ public class ButtonMenu extends BasicGameState {
 	@Override
 	public void enter(GameContainer container, StateBasedGame game)
 			throws SlickException {
+		UI.enter();
 		if (menuState != null)
 			menuState.enter(container, game);
 	}

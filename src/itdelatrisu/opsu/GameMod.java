@@ -49,10 +49,10 @@ public enum GameMod {
 	              "Play with no approach circles and fading notes for a slight score advantage."),
 	FLASHLIGHT    (Category.HARD, 4, GameImage.MOD_FLASHLIGHT, "FL", 1024, Input.KEY_G, 1.12f, false,
 	              "Restricted view area."),
-	RELAX         (Category.SPECIAL, 0, GameImage.MOD_RELAX, "RL", 128, Input.KEY_Z, 0f, false,
-	              "You don't need to click. Give your clicking/tapping finger a break from the heat of things. **UNRANKED**"),
+	RELAX         (Category.SPECIAL, 0, GameImage.MOD_RELAX, "RL", 128, Input.KEY_Z, 0f,
+	              "You don't need to click.\nGive your clicking/tapping finger a break from the heat of things.\n**UNRANKED**"),
 	AUTOPILOT     (Category.SPECIAL, 1, GameImage.MOD_AUTOPILOT, "AP", 8192, Input.KEY_X, 0f, false,
-	              "Automatic cursor movement - just follow the rhythm. **UNRANKED**"),
+	              "Automatic cursor movement - just follow the rhythm.\n**UNRANKED**"),
 	SPUN_OUT      (Category.SPECIAL, 2, GameImage.MOD_SPUN_OUT, "SO", 4096, Input.KEY_V, 0.9f,
 	              "Spinners will be automatically completed."),
 	AUTO          (Category.SPECIAL, 3, GameImage.MOD_AUTO, "", 2048, Input.KEY_B, 1f,
@@ -286,6 +286,12 @@ public enum GameMod {
 	public String getDescription() { return description; }
 
 	/**
+	 * Returns whether or not the mod is implemented.
+	 * @return true if implemented
+	 */
+	public boolean isImplemented() { return implemented; }
+
+	/**
 	 * Toggles the active status of the mod.
 	 * @param checkInverse if true, perform checks for mutual exclusivity
 	 */
@@ -297,28 +303,34 @@ public enum GameMod {
 		scoreMultiplier = -1f;
 
 		if (checkInverse) {
+			boolean b = (this == SUDDEN_DEATH || this == NO_FAIL || this == RELAX || this == AUTOPILOT);
 			if (AUTO.isActive()) {
 				if (this == AUTO) {
-					if (SPUN_OUT.isActive())
-						SPUN_OUT.toggle(false);
-					if (SUDDEN_DEATH.isActive())
-						SUDDEN_DEATH.toggle(false);
-				} else if (this == SPUN_OUT || this == SUDDEN_DEATH) {
-					if (active)
-						toggle(false);
-				}
+					SPUN_OUT.active = false;
+					SUDDEN_DEATH.active = false;
+					RELAX.active = false;
+					AUTOPILOT.active = false;
+				} else if (b)
+					this.active = false;
 			}
-			if (SUDDEN_DEATH.isActive() && NO_FAIL.isActive()) {
-				if (this == SUDDEN_DEATH)
-					NO_FAIL.toggle(false);
+			if (active && b) {
+				SUDDEN_DEATH.active = false;
+				NO_FAIL.active = false;
+				RELAX.active = false;
+				AUTOPILOT.active = false;
+				active = true;
+			}
+			if (AUTOPILOT.isActive() && SPUN_OUT.isActive()) {
+				if (this == AUTOPILOT)
+					SPUN_OUT.active = false;
 				else
-					SUDDEN_DEATH.toggle(false);
+					AUTOPILOT.active = false;
 			}
 			if (EASY.isActive() && HARD_ROCK.isActive()) {
 				if (this == EASY)
-					HARD_ROCK.toggle(false);
+					HARD_ROCK.active = false;
 				else
-					EASY.toggle(false);
+					EASY.active = false;
 			}
 		}
 	}

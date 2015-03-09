@@ -19,7 +19,9 @@
 package itdelatrisu.opsu;
 
 import itdelatrisu.opsu.audio.MusicController;
+import itdelatrisu.opsu.db.DBController;
 import itdelatrisu.opsu.downloads.DownloadList;
+import itdelatrisu.opsu.downloads.Updater;
 import itdelatrisu.opsu.states.ButtonMenu;
 import itdelatrisu.opsu.states.DownloadsMenu;
 import itdelatrisu.opsu.states.Game;
@@ -132,8 +134,20 @@ public class Opsu extends StateBasedGame {
 		ResourceLoader.addResourceLocation(new FileSystemLocation(new File(".")));
 		ResourceLoader.addResourceLocation(new FileSystemLocation(new File("./res/")));
 
-		// initialize score database
-		ScoreDB.init();
+		// initialize databases
+		DBController.init();
+
+		// check for updates
+		new Thread() {
+			@Override
+			public void run() {
+				try {
+					Updater.get().checkForUpdates();
+				} catch (IOException e) {
+					Log.warn("Check for updates failed.", e);
+				}
+			}
+		}.start();
 
 		// start the game
 		try {
@@ -149,6 +163,13 @@ public class Opsu extends StateBasedGame {
 				app.setForceExit(true);
 
 				app.start();
+
+				// run update if available
+				if (Updater.get().getStatus() == Updater.Status.UPDATE_FINAL) {
+					close();
+					Updater.get().runUpdate();
+					break;
+				}
 			}
 		} catch (SlickException e) {
 			// JARs will not run properly inside directories containing '!'
@@ -158,8 +179,6 @@ public class Opsu extends StateBasedGame {
 			else
 				ErrorHandler.error("Error while creating game container.", e, true);
 		}
-
-		Opsu.exit();
 	}
 
 	@Override
@@ -184,24 +203,28 @@ public class Opsu extends StateBasedGame {
 				} else
 					songMenu.resetTrackOnLoad();
 			}
-			Utils.resetCursor();
+			UI.resetCursor();
 			this.enterState(Opsu.STATE_SONGMENU, new FadeOutTransition(Color.black), new FadeInTransition(Color.black));
 			return false;
 		}
 
 		// show confirmation dialog if any downloads are active
-		if (DownloadList.get().hasActiveDownloads() && DownloadList.showExitConfirmation())
+		if (DownloadList.get().hasActiveDownloads() &&
+		    UI.showExitConfirmation(DownloadList.EXIT_CONFIRMATION))
+			return false;
+		if (Updater.get().getStatus() == Updater.Status.UPDATE_DOWNLOADING &&
+		    UI.showExitConfirmation(Updater.EXIT_CONFIRMATION))
 			return false;
 
 		return true;
 	}
 
 	/**
-	 * Closes all resources and exits the application.
+	 * Closes all resources.
 	 */
-	public static void exit() {
-		// close scores database
-		ScoreDB.closeConnection();
+	public static void close() {
+		// close databases
+		DBController.closeConnections();
 
 		// cancel all downloads
 		DownloadList.get().cancelAllDownloads();
@@ -214,7 +237,5 @@ public class Opsu extends StateBasedGame {
 				ErrorHandler.error("Failed to close server socket.", e, false);
 			}
 		}
-
-		System.exit(0);
 	}
 }
